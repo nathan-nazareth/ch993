@@ -92,9 +92,9 @@ export class OrcRenderer {
   readonly mesh: THREE.InstancedMesh;
   private readonly step: THREE.InstancedBufferAttribute;
   private readonly dummy = new THREE.Object3D();
+  private readonly dead = new Set<number>();
 
   constructor(assets: OrcAssets, count: number) {
-    // Instanced attributes live on the geometry; it is only used here.
     this.step = new THREE.InstancedBufferAttribute(new Float32Array(count * 2), 2);
     assets.geometry.setAttribute("aStep", this.step);
 
@@ -103,7 +103,7 @@ export class OrcRenderer {
 
     this.mesh = new THREE.InstancedMesh(assets.geometry, material, count);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.frustumCulled = false; // orcs span the whole terrain
+    this.mesh.frustumCulled = false;
   }
 
   // Vertex-shader foot swing for a static (unrigged) mesh: vertices in
@@ -134,8 +134,13 @@ export class OrcRenderer {
   update(enemies: Enemy[]): void {
     const dummy = this.dummy;
     dummy.rotation.order = "YXZ";
+    let dirty = false;
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
+      // Dead orcs don't move; leave their matrix and step attributes
+      // alone (we set them on the death frame).
+      if (e.isDead() && this.dead.has(i)) continue;
+      if (e.isDead()) this.dead.add(i);
       // Root holds world position (and the tip-over on death); body
       // holds facing yaw, attack lean, and the walk bob.
       dummy.position.copy(e.group.position);
@@ -149,8 +154,11 @@ export class OrcRenderer {
       dummy.updateMatrix();
       this.mesh.setMatrixAt(i, dummy.matrix);
       this.step.setXY(i, e.stepPhase, e.isChasing() ? 1 : 0);
+      dirty = true;
     }
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.step.needsUpdate = true;
+    if (dirty) {
+      this.mesh.instanceMatrix.needsUpdate = true;
+      this.step.needsUpdate = true;
+    }
   }
 }
