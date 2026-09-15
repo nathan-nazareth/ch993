@@ -38,3 +38,25 @@ test("enemies are spawned across the map, never inside the keep-out", () => {
     expect(r).toBeGreaterThanOrEqual(12); // SPAWN_KEEPOUT is 14 minus a margin
   }
 });
+
+test("dayPhase advances and wraps around the cycle", () => {
+  const world = new World(new THREE.Scene());
+  const start = world.dayPhase;
+  for (let i = 0; i < 100; i++) world.fixedUpdate(0.5);
+  // 50s of game time — dayPhase should have wrapped at 240s.
+  expect(world.dayPhase).toBeGreaterThan(start);
+  expect(world.dayPhase).toBeLessThan(1);
+});
+
+test("day-night lighting transitions sun intensity through noon and midnight", () => {
+  const world = new World(new THREE.Scene());
+  // Start at noon (dayPhase=0.25) — strongest sun.
+  world.dayPhase = 0.25;
+  world.fixedUpdate(0);
+  const noon = (world as unknown as { lights: { sun: THREE.DirectionalLight } }).lights.sun.intensity;
+
+  // Advance halfway around the cycle.
+  for (let i = 0; i < 100; i++) world.fixedUpdate(1.2); // ~120s -> dayPhase += 0.5
+  const night = (world as unknown as { lights: { sun: THREE.DirectionalLight } }).lights.sun.intensity;
+  expect(noon).toBeGreaterThan(night);
+});

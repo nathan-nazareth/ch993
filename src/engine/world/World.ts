@@ -23,6 +23,7 @@ import { OrcRenderer, type OrcAssets } from "../render/OrcModel";
 export const TERRAIN_SIZE = 400;
 const TERRAIN_SEGMENTS = 80;
 const PLAYABLE_HALF = TERRAIN_SIZE * 0.48; // soft fence inside the mesh edge
+const DAY_LENGTH_S = 240; // 4 minutes per full day-night cycle
 
 const NPC_DEFS: Array<{
   id: string;
@@ -138,6 +139,7 @@ export class World {
   private orcRenderer: OrcRenderer | null = null;
   private lights: { ambient: THREE.AmbientLight; sun: THREE.DirectionalLight; hemi: THREE.HemisphereLight };
   private dialogueTrees = new Map<string, DialogueTree>();
+  dayPhase = 0.25; // start at noon
 
   constructor(private scene: THREE.Scene, orcAssets?: OrcAssets) {
     this.group = new THREE.Group();
@@ -171,6 +173,8 @@ export class World {
   }
 
   fixedUpdate(dt: number): void {
+    this.dayPhase = (this.dayPhase + dt / DAY_LENGTH_S) % 1;
+    this.applyDayNightLighting();
     for (const npc of this.npcs) npc.fixedUpdate(dt);
     for (const enemy of this.enemies) enemy.fixedUpdate(dt, this.playerPosition);
   }
@@ -179,6 +183,39 @@ export class World {
     for (const npc of this.npcs) npc.update(dt);
     for (const enemy of this.enemies) enemy.update(dt);
     this.orcRenderer?.update(this.enemies);
+  }
+
+  // Day-night cycle driven by a single sin wave. At dayPhase=0 the sun
+  // is at sunrise (east, low); at 0.25 it's noon (overhead); at 0.5
+  // sunset (west, low); at 0.75 midnight (overhead but pointing up to
+  // a dim "moon"). Ambient and sun light intensity follow the curve.
+  private applyDayNightLighting(): void {
+    const p = this.dayPhase;
+    // Sun angle: 0 → morning (+x low), 0.25 → noon (overhead), 0.5 →
+    // evening (-x low), 0.75 → midnight (below).
+    const angle = (p - 0.25) * Math.PI * 2;
+    const elevation = Math.cos(angle);
+    const azimuth = Math.sin(angle);
+    const sun = this.lights.sun;
+    sun.position.set(80 * azimuth, 100 * elevation, 60);
+    const dayStrength = Math.max(0, elevation);
+    sun.intensity = 0.3 + dayStrength * 0.8;
+    this.lights.ambient.intensity = 0.35 + dayStrength * 0.25;
+    const skyTop = Math.max(0, elevation) * 0.7 + 0.2;
+    this.lights.hemi.intensity = skyTop;
+    const fogColor = this.computeFogColor(p);
+    if (this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.color.setHex(fogColor);
+    }
+  }
+
+  private computeFogColor(p: number): number {
+    // Mix between night blue and day warm-grey.
+    const day = new THREE.Color(0x4a5a6a);
+    const night = new THREE.Color(0x0a0e1a);
+    const t = Math.max(0, Math.sin(p * Math.PI * 2 - Math.PI / 2));
+    const c = day.clone().lerp(night, 1 - t);
+    return c.getHex();
   }
 
   get playerPosition(): THREE.Vector3 {
