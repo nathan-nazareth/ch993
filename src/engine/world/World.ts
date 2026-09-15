@@ -191,8 +191,6 @@ export class World {
   // a dim "moon"). Ambient and sun light intensity follow the curve.
   private applyDayNightLighting(): void {
     const p = this.dayPhase;
-    // Sun angle: 0 → morning (+x low), 0.25 → noon (overhead), 0.5 →
-    // evening (-x low), 0.75 → midnight (below).
     const angle = (p - 0.25) * Math.PI * 2;
     const elevation = Math.cos(angle);
     const azimuth = Math.sin(angle);
@@ -201,22 +199,17 @@ export class World {
     const dayStrength = Math.max(0, elevation);
     sun.intensity = 0.3 + dayStrength * 0.8;
     this.lights.ambient.intensity = 0.35 + dayStrength * 0.25;
-    const skyTop = Math.max(0, elevation) * 0.7 + 0.2;
-    this.lights.hemi.intensity = skyTop;
-    const fogColor = this.computeFogColor(p);
+    this.lights.hemi.intensity = Math.max(0, elevation) * 0.7 + 0.2;
     if (this.scene.fog instanceof THREE.Fog) {
-      this.scene.fog.color.setHex(fogColor);
+      // Reuse the scratch colour to avoid allocating every fixed step.
+      this.fogScratch.copy(this.dayFog).lerp(this.nightFog, 1 - dayStrength);
+      this.scene.fog.color.copy(this.fogScratch);
     }
   }
 
-  private computeFogColor(p: number): number {
-    // Mix between night blue and day warm-grey.
-    const day = new THREE.Color(0x4a5a6a);
-    const night = new THREE.Color(0x0a0e1a);
-    const t = Math.max(0, Math.sin(p * Math.PI * 2 - Math.PI / 2));
-    const c = day.clone().lerp(night, 1 - t);
-    return c.getHex();
-  }
+  private readonly fogScratch = new THREE.Color();
+  private readonly dayFog = new THREE.Color(0x4a5a6a);
+  private readonly nightFog = new THREE.Color(0x0a0e1a);
 
   get playerPosition(): THREE.Vector3 {
     return this._playerPos;
