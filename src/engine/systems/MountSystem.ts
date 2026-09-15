@@ -67,6 +67,12 @@ export class MountSystem {
     this.riding = riding;
   }
 
+  // Programmatic dismount used by respawn so the player doesn't
+  // teleport back onto the eagle after being slain mid-flight.
+  forceDismount(): void {
+    if (this.riding) this.dismount();
+  }
+
   // Keep the horse on the ground at its current xz while the player
   // rides the eagle. We don't snap it to the player because the eagle
   // can be far overhead and the player expects to remount the horse

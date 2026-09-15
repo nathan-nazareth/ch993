@@ -116,7 +116,6 @@ export class Enemy {
 
   update(_dt: number): void {
     if (this.state === "dead") return;
-    this.stepPhase += _dt;
     const speed = this.state === "chase" ? 1 : 0;
     this.body.position.y = Math.sin(this.stepPhase * 7) * 0.05 * speed;
 

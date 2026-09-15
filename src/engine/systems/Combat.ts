@@ -29,6 +29,7 @@ export class Combat {
   private arrowPool: Pool<Arrow>;
   private activeArrows: Arrow[] = [];
   private iFrames = 0;
+  private onRespawn: () => void = () => {};
 
   constructor(
     private world: World,
@@ -36,6 +37,7 @@ export class Combat {
     private input: Input,
     private audio: AudioBus,
     private state: GameState,
+    private mount: { forceDismount(): void },
   ) {
     this.arrowPool = new Pool<Arrow>(
       () => new Arrow(),
@@ -176,6 +178,10 @@ export class Combat {
   private respawn(): void {
     this.state.setHealth(this.state.maxHealth);
     this.player.group.position.set(0, this.world.heightSampler(0, 0), 0);
+    // The mount system holds the riding flag privately. Without
+    // forceDismount, the next fixedUpdate would teleport the player
+    // back up to wherever the eagle was circling.
+    this.mount.forceDismount();
     this.state.pushHint("You have been slain. The Eagles carry you back to the Shire.", 5000);
   }
 }

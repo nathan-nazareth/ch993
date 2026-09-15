@@ -54,7 +54,7 @@ export class Engine {
     this.player = new Player(this.world, this.input, this.audio);
     this.mountSystem = new MountSystem(this.world, this.player, this.input, this.state, this.audio);
     this.cameraSystem = new Camera(this.renderer.camera, this.input, this.player, this.mountSystem);
-    this.combat = new Combat(this.world, this.player, this.input, this.audio, this.state);
+    this.combat = new Combat(this.world, this.player, this.input, this.audio, this.state, this.mountSystem);
     this.dialogue = new Dialogue(this.player, this.world, this.input, this.state, this.audio);
     this.movement = new MovementSystem(this.player, this.input, this.mountSystem, this.state);
 
