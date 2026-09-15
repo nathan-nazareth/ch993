@@ -38,6 +38,10 @@ export class Dialogue {
 
   fixedUpdate(_dt: number): void {
     if (this.state.activeDialogue) {
+      // Keep the speaker facing the player while in conversation.
+      const npc = this.world.findInteractable(this.player.group.position, INTERACT_RANGE);
+      if (npc) npc.faceTowards(this.player.group.position);
+
       if (this.input.consumePressed("escape")) {
         this.close();
         return;
@@ -58,7 +62,6 @@ export class Dialogue {
       if (npc) {
         this.start(npc.id);
         npc.faceTowards(this.player.group.position);
-        this.audio.dialogue();
       }
     }
   }
