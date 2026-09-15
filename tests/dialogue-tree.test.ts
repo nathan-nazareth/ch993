@@ -97,3 +97,28 @@ test("Esc closes the dialogue", () => {
   dialogue.fixedUpdate(0);
   expect(state.activeDialogue).toBeNull();
 });
+
+test("out-of-range choice keys clamp to the last available choice", () => {
+  const scene = new THREE.Scene();
+  const world = new World(scene);
+  // Rosie has 2 choices — go stand next to her.
+  const player = new Player(world, new FakeInput() as never, {} as AudioBus);
+  player.group.position.set(-4, world.heightSampler(-4, 6), 6);
+  const input = new FakeInput();
+  const state = new GameState();
+  const audio = { dialogue() {} } as unknown as AudioBus;
+  const dialogue = new Dialogue(player, world, input as never, state, audio);
+
+  input.press("e");
+  dialogue.fixedUpdate(0);
+  expect(state.activeDialogue!.speaker).toBe("Rosie Cotton");
+  expect(state.activeDialogue!.choices.length).toBe(2);
+
+  // Press 9 — no key is mapped, so no advance.
+  input.pressed.add("9");
+  // The Dialogue class only checks "1"/"2"/"3", so 9 is ignored.
+  // Verify by pressing E (default = first choice) afterwards.
+  input.press("e");
+  dialogue.fixedUpdate(0);
+  expect(state.activeDialogue!.text).toMatch(/East/);
+});

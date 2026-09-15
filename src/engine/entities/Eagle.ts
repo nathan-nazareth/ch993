@@ -18,7 +18,6 @@ export class Eagle {
   private rightWing: THREE.Mesh;
   private glow: THREE.PointLight;
   flapPhase = 0;
-  isFlying = false;
 
   constructor() {
     this.perchCenter = new THREE.Vector3(0, 0, 0);
@@ -70,7 +69,6 @@ export class Eagle {
   }
 
   fixedUpdate(dt: number, isFlying: boolean, _speed: number): void {
-    this.isFlying = isFlying;
     if (isFlying) {
       // When mounted, the MountSystem drives position. We just flap.
       this.flapPhase += dt * 10;
