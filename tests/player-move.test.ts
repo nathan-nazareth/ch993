@@ -5,7 +5,6 @@ import { test, expect } from "bun:test";
 import * as THREE from "three";
 import { Player } from "../src/engine/entities/Player";
 import { World } from "../src/engine/world/World";
-import { GameState } from "../src/engine/core/GameState";
 
 class FakeInput {
   private map = new Map<string, boolean>();
@@ -29,7 +28,6 @@ function setupPlayer() {
   const scene = new THREE.Scene();
   const world = new World(scene);
   const input = new FakeInput();
-  const state = new GameState();
   const audio = {
     footstep() {}, swordSwing() {}, bowShot() {}, hit() {}, dialogue() {},
     discovery() {}, startAmbientWind() {}, init() {}, resume() {}, setEnabled() {},
