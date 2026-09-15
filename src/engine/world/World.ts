@@ -199,6 +199,10 @@ export class World {
       const dz = npc.group.position.z - position.z;
       const d2 = dx * dx + dz * dz;
       if (d2 > r2) continue;
+      // Y matters: a player on the eagle can be 5+ units above an NPC
+      // while still overlapping in xz — they shouldn't trigger dialog.
+      const dy = npc.group.position.y - position.y;
+      if (Math.abs(dy) > 2.5) continue;
       const d = Math.sqrt(d2);
       if (d < bestDist) {
         bestDist = d;

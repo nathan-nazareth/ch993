@@ -24,6 +24,7 @@ export function GameView({ onExit }: { onExit: () => void }) {
       engine = new Engine(canvas, orcAssets);
       setEngine(engine);
       engine.audio.init();
+      engine.audio.startAmbientWind();
       // The AudioContext is created in an async callback, so it may
       // start suspended. resume() inside the next user gesture handler
       // unblocks playback.

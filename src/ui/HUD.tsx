@@ -102,9 +102,9 @@ function WeaponIndicator({ state }: { state: GameState }) {
 
 function MountIndicator({ state }: { state: GameState }) {
   const labels: Record<typeof state.mount, string> = {
-    horse: "Shadowfax (Q to dismount)",
-    eagle: "Great Eagle (Q to dismount)",
-    none: "On foot (F to mount)",
+    horse: "Shadowfax · Q to dismount",
+    eagle: "Great Eagle · Q to dismount",
+    none: "On foot · Q remount horse · F mount eagle",
   };
   return (
     <div className="mount-indicator" aria-live="polite">

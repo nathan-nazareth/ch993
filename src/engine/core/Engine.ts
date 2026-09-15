@@ -117,16 +117,22 @@ export class Engine {
   }
 
   private publishPositions(): void {
+    const px = this.player.group.position.x;
+    const pz = this.player.group.position.z;
     this.state.setPlayerPosition(
-      this.player.group.position.x,
+      px,
       this.player.group.position.y,
-      this.player.group.position.z,
+      pz,
     );
     this.state.setEaglePosition(
       this.world.eagle.perch.x,
       this.world.eagle.perch.y,
       this.world.eagle.perch.z,
     );
+    // Region change — coarse buckets so it only fires on a real move.
+    if (px > 80 && pz > 50) this.state.setLocation("Bree");
+    else if (px < -80 && pz < -50) this.state.setLocation("Rivendell");
+    else this.state.setLocation("Shire");
   }
 
   private renderUpdate(_dt: number): void {
