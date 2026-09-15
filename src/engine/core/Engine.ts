@@ -108,8 +108,8 @@ export class Engine {
 
   private fixedUpdate(dt: number): void {
     this.movement.fixedUpdate(dt);
-    this.player.fixedUpdate(dt);
     this.mountSystem.fixedUpdate(dt);
+    this.player.fixedUpdate(dt);
     this.world.fixedUpdate(dt);
     this.combat.fixedUpdate(dt);
     this.dialogue.fixedUpdate(dt);
