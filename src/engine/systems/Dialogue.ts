@@ -75,7 +75,7 @@ export class Dialogue {
     if (!tree) return;
     this.currentTree = tree;
     this.currentNodeKey = "root";
-    this.speakCurrent();
+    this.speakCurrent(true);
   }
 
   private close(): void {
@@ -101,7 +101,7 @@ export class Dialogue {
       return;
     }
     this.currentNodeKey = c.next;
-    this.speakCurrent();
+    this.speakCurrent(false);
   }
 
   private node(key: string): DialogueNode | null {
@@ -109,7 +109,7 @@ export class Dialogue {
     return key === "root" ? this.currentTree.root : this.currentTree.nodes[key] ?? null;
   }
 
-  private speakCurrent(): void {
+  private speakCurrent(playSound: boolean): void {
     if (!this.currentTree || !this.currentNodeKey) return;
     const node = this.node(this.currentNodeKey);
     if (!node) {
@@ -126,6 +126,6 @@ export class Dialogue {
       choices,
     };
     this.state.setDialogue(line);
-    this.audio.dialogue();
+    if (playSound) this.audio.dialogue();
   }
 }

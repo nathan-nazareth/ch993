@@ -13,6 +13,7 @@ import { AudioBus } from "../core/Audio";
 import { GameState } from "../core/GameState";
 import { Arrow } from "./Arrow";
 import { Pool } from "../core/Pools";
+import { MountSystem } from "./MountSystem";
 
 const SWORD_RANGE = 4.0;
 const SWORD_RANGE_SQ = SWORD_RANGE * SWORD_RANGE;
@@ -37,7 +38,7 @@ export class Combat {
     private input: Input,
     private audio: AudioBus,
     private state: GameState,
-    private mount: { forceDismount(): void },
+    private mount: MountSystem,
   ) {
     this.arrowPool = new Pool<Arrow>(
       () => new Arrow(),
@@ -103,7 +104,11 @@ export class Combat {
     );
     this.player.group.position.x = lunge.x;
     this.player.group.position.z = lunge.z;
-    this.player.group.position.y = this.world.heightSampler(lunge.x, lunge.z);
+    // Only snap to ground if not airborne. On the eagle, MountSystem
+    // owns the player's Y and would teleport it back next tick.
+    if (!this.mount.isRiding || this.mount.currentMount !== "eagle") {
+      this.player.group.position.y = this.world.heightSampler(lunge.x, lunge.z);
+    }
 
     let hitSomething = false;
     for (const enemy of this.world.enemies) {
