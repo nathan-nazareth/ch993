@@ -88,10 +88,10 @@ clean, from-scratch TypeScript implementation.
 
 - Lint passes (0 errors, 0 warnings)
 - Typecheck passes
-- 16 tests pass (was 4)
+- 29 tests pass (was 4)
 - Dead code removed: `STAMINA_DRAIN`, `STAMINA_REGEN`,
   `INTERACT_RANGE`, `EAGLE_MOUNT_RANGE`, `FLIGHT_HEIGHT_BASE`,
-  unused `three` imports
+  unused `three` imports, `Combat.onRespawn`, `Eagle.isFlying`
 
 ## Run it
 
@@ -137,12 +137,14 @@ ch993/
 ├── assets-src/                       # source files for the build pipeline
 ├── scripts/build-orc.ts              # offline orc decimation pipeline
 ├── tests/
+│   ├── combat.test.ts                # NEW: sword/bow stamina, weapon toggle, dialog gate
 │   ├── dialogue-tree.test.ts         # NEW: branches actually walk
 │   ├── enemy-ground.test.ts
 │   ├── game-state.test.ts            # NEW: change-detection guards
 │   ├── orc-asset.test.ts
+│   ├── player-move.test.ts           # NEW: WASD direction math, world clamp
 │   ├── respawn-mount.test.ts         # NEW: eagle-mount respawn
-│   └── world-clamps.test.ts          # NEW: world bounds
+│   └── world-clamps.test.ts          # NEW: world bounds, day-night cycle
 └── src/
     ├── main.tsx
     ├── App.tsx                       # menu / game state machine
@@ -190,7 +192,7 @@ ch993/
 | `npm run typecheck` | ✓ 0 errors |
 | `npm run lint` | ✓ 0 errors, 0 warnings |
 | `npm run build` | ✓ 3.06s, 4 chunks |
-| `npm test` | ✓ 16 pass, 0 fail (36,084 assertions) |
+| `npm test` | ✓ 29 pass, 0 fail (36,110 assertions) |
 | `npm run dev` (live) | ✓ serves on `http://127.0.0.1:5173/` |
 
 ## What's still in scope for future iterations
@@ -200,11 +202,13 @@ ch993/
    terrain seeds and NPC rosters.
 2. **Save/load.** `localStorage` snapshot of position, health, quests,
    discovered eagle. The `Storage.ts` module is the seam.
-3. **Better dialogue branching.** The tree is now walked but still has
+3. **Day/night cycle** — now implemented (`World.dayPhase`,
+   `applyDayNightLighting`). 4-minute cycle: sun position, intensity,
+   ambient, and fog colour all track the phase. See World.ts:184.
+
+4. **Better dialogue branching.** The tree is now walked but still has
    only a few branches per node; add a real choice selector with arrow
    keys and free-text input for named NPCs.
-4. **Day/night cycle.** A single DirectionalLight + sun angle driven
-   by elapsed time gives huge atmosphere for ~20 lines.
 5. **Sound design depth.** Right now each cue is one oscillator.
    Layered synthesis (multiple oscillators, envelopes, spatial
    positioning) would lift the audio from "functional" to "epic".
