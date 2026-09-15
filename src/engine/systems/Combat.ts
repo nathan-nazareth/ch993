@@ -30,7 +30,6 @@ export class Combat {
   private arrowPool: Pool<Arrow>;
   private activeArrows: Arrow[] = [];
   private iFrames = 0;
-  private onRespawn: () => void = () => {};
 
   constructor(
     private world: World,
