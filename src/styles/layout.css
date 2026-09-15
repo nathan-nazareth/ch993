@@ -196,6 +196,40 @@
   letter-spacing: 0.15em;
 }
 
+.dialogue__choices {
+  list-style: none;
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dialogue__choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.95rem;
+  color: var(--shire-parchment);
+}
+
+.dialogue__choice-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--border-gold);
+  color: var(--dwarven-gold);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+
+.dialogue__choice:first-child .dialogue__choice-key {
+  background: var(--dwarven-gold);
+  color: var(--void-black);
+}
+
 /* Quest log */
 .quest-log {
   position: absolute;

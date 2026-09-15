@@ -10,15 +10,9 @@ import { Materials } from "../render/Materials";
 import { Input } from "../core/Input";
 import { AudioBus } from "../core/Audio";
 import { World } from "../world/World";
-import { Camera } from "../systems/Camera";
-import { MountSystem } from "../systems/MountSystem";
 
 const WALK_SPEED = 4.0;
 const RUN_SPEED = 8.0;
-const STAMINA_DRAIN = 25;
-const STAMINA_REGEN = 15;
-const INTERACT_RANGE = 3.5;
-const EAGLE_MOUNT_RANGE = 8.0;
 
 export class Player {
   readonly group: THREE.Group;
@@ -112,7 +106,7 @@ export class Player {
     this.weaponMesh.add(bowGroup);
   }
 
-  fixedUpdate(dt: number): void {
+  fixedUpdate(_dt: number): void {
     this.world.registerPlayerPosition(this.group.position);
   }
 
@@ -169,30 +163,23 @@ export class Player {
   // direction. WASD is pure strafe.
   applyMovement(moveDir: THREE.Vector3, speed: number, dt: number, isRunning: boolean): void {
     if (speed > 0) {
-      const newX = this.group.position.x + moveDir.x * speed * dt;
-      const newZ = this.group.position.z + moveDir.z * speed * dt;
-      const groundY = this.world.heightSampler(newX, newZ);
-      this.group.position.x = newX;
-      this.group.position.z = newZ;
+      const targetX = this.group.position.x + moveDir.x * speed * dt;
+      const targetZ = this.group.position.z + moveDir.z * speed * dt;
+      const clamped = this.world.clampXZ(targetX, targetZ);
+      const groundY = this.world.heightSampler(clamped.x, clamped.z);
+      this.group.position.x = clamped.x;
+      this.group.position.z = clamped.z;
       this.group.position.y = groundY;
 
       this.walkPhase += dt * (isRunning ? 12 : 7);
-      if (this.input.isDown("w") || this.input.isDown("a") || this.input.isDown("s") || this.input.isDown("d")) {
-        if (Math.random() < dt * (isRunning ? 5 : 3)) this.audio.footstep();
-      }
+      if (Math.random() < dt * (isRunning ? 5 : 3)) this.audio.footstep();
     } else {
       this.walkPhase *= 0.9;
     }
-    // Note: body.rotation.y is set in Camera.update so it tracks
-    // mouse-look without the 1-frame lag of the fixed-step loop.
 
-    // Drive the sword-swing arm: when swingPhase > 0, the right arm
-    // arcs through a full forward thrust and back. When idle, the
-    // arm follows the walk cycle.
     if (this.swingPhase > 0) {
       this.swingPhase = Math.max(0, this.swingPhase - dt);
-      const t = 1 - this.swingPhase / 0.5; // 0 → 1 over the swing
-      // Smooth arc: 0 → forward → 0 using a half-sine.
+      const t = 1 - this.swingPhase / 0.5;
       this.rightArm.rotation.x = -Math.sin(t * Math.PI) * 2.4;
     } else {
       this.rightArm.rotation.x = Math.sin(this.walkPhase) * (speed > 0 ? 0.5 : 0);

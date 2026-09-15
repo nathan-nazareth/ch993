@@ -4,6 +4,11 @@
 // All public methods are read-only from outside; mutation happens in
 // fixedUpdate. The world is one big THREE.Group that the engine adds
 // to the scene.
+//
+// Performance: all geometry sharing goes through InstancedMesh
+// (trees, rocks, flowers, orcs). Trees/rocks/flowers use the same
+// seeded RNG as enemy spawns so the world is byte-identical across
+// reloads.
 
 import * as THREE from "three";
 import { Materials } from "../render/Materials";
@@ -15,21 +20,121 @@ import { Eagle } from "../entities/Eagle";
 import { DialogueTree } from "../systems/Dialogue";
 import { OrcRenderer, type OrcAssets } from "../render/OrcModel";
 
-const TERRAIN_SIZE = 400;
+export const TERRAIN_SIZE = 400;
 const TERRAIN_SEGMENTS = 80;
+const PLAYABLE_HALF = TERRAIN_SIZE * 0.48; // soft fence inside the mesh edge
+
+const NPC_DEFS: Array<{
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  tree: DialogueTree;
+}> = [
+  {
+    id: "old_tom",
+    name: "Old Tom Cotton",
+    x: 5,
+    z: -3,
+    tree: {
+      root: {
+        speaker: "Old Tom Cotton",
+        text: "Good day to you, traveller! The Shire is peaceful, but word from the East is troubling.",
+        choices: [
+          { text: "What word from the East?", next: "word_from_east" },
+          { text: "I must be going.", next: "farewell" },
+        ],
+      },
+      nodes: {
+        word_from_east: {
+          speaker: "Old Tom Cotton",
+          text: "Black riders, they say. Seeking something — or someone. The folk are afraid.",
+          choices: [
+            { text: "Then I should not linger here.", next: "farewell" },
+            { text: "Tell me more of these riders.", next: "more_riders" },
+          ],
+        },
+        more_riders: {
+          speaker: "Old Tom Cotton",
+          text: "They wear dark cloaks and ride black horses. None here know their purpose. Be wary.",
+          choices: [{ text: "I will be.", next: "farewell" }],
+        },
+        farewell: {
+          speaker: "Old Tom Cotton",
+          text: "Safe roads, friend. And may your shadow never grow less.",
+          choices: [{ text: "Farewell.", next: null }],
+        },
+      },
+    },
+  },
+  {
+    id: "rosie",
+    name: "Rosie Cotton",
+    x: -4,
+    z: 6,
+    tree: {
+      root: {
+        speaker: "Rosie Cotton",
+        text: "Oh! A stranger! Have you come from Bree? They say there's trouble on the road.",
+        choices: [
+          { text: "I have. I am heading east.", next: "east" },
+          { text: "Just passing through.", next: "passing" },
+        ],
+      },
+      nodes: {
+        east: {
+          speaker: "Rosie Cotton",
+          text: "East, beyond Bree? Be careful. The wild is no place for the unwary.",
+          choices: [{ text: "Thank you for the warning.", next: null }],
+        },
+        passing: {
+          speaker: "Rosie Cotton",
+          text: "Well, you're welcome at the Dragon Inn, if you pass that way.",
+          choices: [{ text: "I may take you up on that.", next: null }],
+        },
+      },
+    },
+  },
+  {
+    id: "strider",
+    name: "Strider",
+    x: 30,
+    z: 25,
+    tree: {
+      root: {
+        speaker: "Strider",
+        text: "You walk in shadow. The road ahead is long and fraught with peril.",
+        choices: [
+          { text: "I go nonetheless.", next: "go_anyway" },
+          { text: "Who are you?", next: "who" },
+        ],
+      },
+      nodes: {
+        go_anyway: {
+          speaker: "Strider",
+          text: "Then ride fast, and watch the skies for fell creatures.",
+          choices: [{ text: "I will heed your words.", next: null }],
+        },
+        who: {
+          speaker: "Strider",
+          text: "A friend of the Free Peoples. That is all you need to know.",
+          choices: [{ text: "Then I am glad to meet you.", next: null }],
+        },
+      },
+    },
+  },
+];
 
 export class World {
   readonly group: THREE.Group;
   readonly heightSampler: (x: number, z: number) => number;
+  readonly boundsHalf: number;
   readonly npcs: NPC[] = [];
   readonly enemies: Enemy[] = [];
   readonly horse: Horse;
   readonly eagle: Eagle;
 
   private terrain: THREE.Mesh;
-  private trees: THREE.InstancedMesh;
-  private rocks: THREE.InstancedMesh;
-  private flowers: THREE.InstancedMesh;
   private orcRenderer: OrcRenderer | null = null;
   private lights: { ambient: THREE.AmbientLight; sun: THREE.DirectionalLight; hemi: THREE.HemisphereLight };
   private dialogueTrees = new Map<string, DialogueTree>();
@@ -37,18 +142,18 @@ export class World {
   constructor(private scene: THREE.Scene, orcAssets?: OrcAssets) {
     this.group = new THREE.Group();
     this.scene.add(this.group);
+    this.boundsHalf = PLAYABLE_HALF;
 
     this.lights = this.buildLights();
     this.terrain = this.buildTerrain();
-    this.trees = this.buildTrees();
-    this.rocks = this.buildRocks();
-    this.flowers = this.buildFlowers();
     this.heightSampler = this.buildHeightSampler();
+    this.buildTrees();
+    this.buildRocks();
+    this.buildFlowers();
 
     this.horse = new Horse();
     this.eagle = new Eagle();
     this.horse.group.position.set(0, this.heightSampler(0, 0), 0);
-    // Eagle perches on a hill close enough to walk to from spawn.
     const eagleX = 14;
     const eagleZ = -10;
     const eagleGroundY = this.heightSampler(eagleX, eagleZ);
@@ -59,9 +164,6 @@ export class World {
     this.spawnNPCs();
     this.spawnEnemies();
 
-    // All orcs share one InstancedMesh (1 draw call); enemies keep
-    // only transform state. Without assets (tests, offline) there is
-    // simply no orc rendering.
     if (orcAssets) {
       this.orcRenderer = new OrcRenderer(orcAssets, this.enemies.length);
       this.group.add(this.orcRenderer.mesh);
@@ -91,8 +193,13 @@ export class World {
   findInteractable(position: THREE.Vector3, range: number): NPC | null {
     let best: NPC | null = null;
     let bestDist = range;
+    const r2 = range * range;
     for (const npc of this.npcs) {
-      const d = npc.group.position.distanceTo(position);
+      const dx = npc.group.position.x - position.x;
+      const dz = npc.group.position.z - position.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > r2) continue;
+      const d = Math.sqrt(d2);
       if (d < bestDist) {
         bestDist = d;
         best = npc;
@@ -102,11 +209,20 @@ export class World {
   }
 
   findEagle(position: THREE.Vector3, range: number): Eagle | null {
-    // Check against the perch (not the moving eagle body) so the
-    // player can mount by walking to the area even when the eagle
-    // is on the far side of its circle.
-    const d = this.eagle.perch.distanceTo(position);
-    return d < range ? this.eagle : null;
+    const dx = this.eagle.perch.x - position.x;
+    const dz = this.eagle.perch.z - position.z;
+    const r2 = range * range;
+    return dx * dx + dz * dz < r2 ? this.eagle : null;
+  }
+
+  // Soft clamp: snap the player's xz inside the playable area so
+  // they can't fall off the terrain mesh.
+  clampXZ(x: number, z: number): { x: number; z: number } {
+    const lim = this.boundsHalf;
+    return {
+      x: Math.max(-lim, Math.min(lim, x)),
+      z: Math.max(-lim, Math.min(lim, z)),
+    };
   }
 
   getDialogueTree(npcId: string): DialogueTree | null {
@@ -144,7 +260,6 @@ export class World {
   }
 
   private sampleHeightStatic(x: number, z: number): number {
-    // Simple multi-octave noise from sin/cos — no library, no alloc.
     const a = Math.sin(x * 0.05) * Math.cos(z * 0.05) * 2.0;
     const b = Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.13) * 0.8;
     const c = Math.sin(x * 0.31) * Math.cos(z * 0.27) * 0.3;
@@ -156,169 +271,90 @@ export class World {
     return (x, z) => this.sampleHeightStatic(x, z);
   }
 
-  private buildTrees(): THREE.InstancedMesh {
-    const trunk = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 5);
-    const trunkMesh = new THREE.Mesh(trunk, Materials.treeTrunk);
-    const crown = new THREE.SphereGeometry(1.0, 6, 5);
-    const crownMesh = new THREE.Mesh(crown, Materials.tree);
-
-    const count = 80;
-    const merged = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(0.001, 0.001, 0.001),
-      Materials.tree,
-      count * 2,
-    );
-
+  private buildTrees(): void {
+    const rng = makeRng(0xABCDEF);
     const tmp = new THREE.Object3D();
+    const count = 80;
+    const trunks = new THREE.InstancedMesh(
+      Geometries.unitBox,
+      Materials.treeTrunk,
+      count,
+    );
+    const crowns = new THREE.InstancedMesh(
+      Geometries.unitSphere,
+      Materials.tree,
+      count,
+    );
     let i = 0;
-    for (let n = 0; n < count; n++) {
-      const x = (Math.random() - 0.5) * TERRAIN_SIZE * 0.9;
-      const z = (Math.random() - 0.5) * TERRAIN_SIZE * 0.9;
+    let safety = 0;
+    while (i < count && safety++ < count * 4) {
+      const x = (rng() - 0.5) * TERRAIN_SIZE * 0.9;
+      const z = (rng() - 0.5) * TERRAIN_SIZE * 0.9;
       if (Math.hypot(x, z) < 12) continue;
       const y = this.sampleHeightStatic(x, z);
+      const scale = 0.8 + rng() * 0.6;
 
       tmp.position.set(x, y + 0.75, z);
-      tmp.scale.set(1, 1, 1);
+      tmp.scale.set(0.4, 1.5 * scale, 0.4);
+      tmp.rotation.set(0, 0, 0);
       tmp.updateMatrix();
-      merged.setMatrixAt(i++, tmp.matrix);
+      trunks.setMatrixAt(i, tmp.matrix);
 
-      const scale = 0.8 + Math.random() * 0.6;
-      tmp.position.set(x, y + 1.5 + scale, z);
-      tmp.scale.set(scale, scale, scale);
+      tmp.position.set(x, y + 1.5 + scale * 0.9, z);
+      tmp.scale.set(scale * 1.1, scale * 1.1, scale * 1.1);
       tmp.updateMatrix();
-      merged.setMatrixAt(i++, tmp.matrix);
+      crowns.setMatrixAt(i, tmp.matrix);
+      i++;
     }
-    merged.count = i;
-    merged.instanceMatrix.needsUpdate = true;
-    this.group.add(merged);
-    return merged;
+    trunks.count = i;
+    crowns.count = i;
+    trunks.instanceMatrix.needsUpdate = true;
+    crowns.instanceMatrix.needsUpdate = true;
+    this.group.add(trunks);
+    this.group.add(crowns);
   }
 
-  private buildRocks(): THREE.InstancedMesh {
+  private buildRocks(): void {
+    const rng = makeRng(0x55AA55);
     const rock = new THREE.IcosahedronGeometry(0.6, 0);
     const mesh = new THREE.InstancedMesh(rock, Materials.stone, 40);
     const tmp = new THREE.Object3D();
     for (let i = 0; i < 40; i++) {
-      const x = (Math.random() - 0.5) * TERRAIN_SIZE * 0.85;
-      const z = (Math.random() - 0.5) * TERRAIN_SIZE * 0.85;
+      const x = (rng() - 0.5) * TERRAIN_SIZE * 0.85;
+      const z = (rng() - 0.5) * TERRAIN_SIZE * 0.85;
       const y = this.sampleHeightStatic(x, z);
-      const s = 0.5 + Math.random() * 1.5;
+      const s = 0.5 + rng() * 1.5;
       tmp.position.set(x, y + s * 0.3, z);
       tmp.scale.set(s, s * 0.6, s);
-      tmp.rotation.y = Math.random() * Math.PI;
+      tmp.rotation.y = rng() * Math.PI;
       tmp.updateMatrix();
       mesh.setMatrixAt(i, tmp.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
     this.group.add(mesh);
-    return mesh;
   }
 
-  private buildFlowers(): THREE.InstancedMesh {
+  private buildFlowers(): void {
+    const rng = makeRng(0x77BB77);
     const flower = new THREE.PlaneGeometry(0.3, 0.3);
     const mesh = new THREE.InstancedMesh(flower, Materials.clothingRed, 60);
     const tmp = new THREE.Object3D();
     for (let i = 0; i < 60; i++) {
-      const x = (Math.random() - 0.5) * TERRAIN_SIZE * 0.7;
-      const z = (Math.random() - 0.5) * TERRAIN_SIZE * 0.7;
+      const x = (rng() - 0.5) * TERRAIN_SIZE * 0.7;
+      const z = (rng() - 0.5) * TERRAIN_SIZE * 0.7;
       const y = this.sampleHeightStatic(x, z) + 0.05;
       tmp.position.set(x, y, z);
       tmp.rotation.x = -Math.PI / 2;
-      tmp.rotation.z = Math.random() * Math.PI;
+      tmp.rotation.z = rng() * Math.PI;
       tmp.updateMatrix();
       mesh.setMatrixAt(i, tmp.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
     this.group.add(mesh);
-    return mesh;
   }
 
   private spawnNPCs(): void {
-    const npcDefs: Array<{
-      id: string; name: string; x: number; z: number;
-      tree: DialogueTree;
-    }> = [
-      {
-        id: "old_tom", name: "Old Tom Cotton",
-        x: 5, z: -3,
-        tree: {
-          root: {
-            speaker: "Old Tom Cotton",
-            text: "Good day to you, traveller! The Shire is peaceful, but word from the East is troubling.",
-            choices: [
-              { text: "What word?", next: "word_from_east" },
-              { text: "I must be going.", next: "farewell" },
-            ],
-          },
-          nodes: {
-            word_from_east: {
-              speaker: "Old Tom Cotton",
-              text: "Black riders, they say. Seeking something — or someone. The folk are afraid.",
-              choices: [{ text: "Then I should not linger here.", next: "farewell" }],
-            },
-            farewell: {
-              speaker: "Old Tom Cotton",
-              text: "Safe roads, friend. And may your shadow never grow less.",
-              choices: [],
-            },
-          },
-        },
-      },
-      {
-        id: "rosie", name: "Rosie Cotton",
-        x: -4, z: 6,
-        tree: {
-          root: {
-            speaker: "Rosie Cotton",
-            text: "Oh! A stranger! Have you come from Bree? They say there's trouble on the road.",
-            choices: [
-              { text: "I have. I am heading east.", next: "east" },
-              { text: "Just passing through.", next: "passing" },
-            ],
-          },
-          nodes: {
-            east: {
-              speaker: "Rosie Cotton",
-              text: "East, beyond Bree? Be careful. The wild is no place for the unwary.",
-              choices: [],
-            },
-            passing: {
-              speaker: "Rosie Cotton",
-              text: "Well, you're welcome at the Dragon Inn, if you pass that way.",
-              choices: [],
-            },
-          },
-        },
-      },
-      {
-        id: "strider", name: "Strider",
-        x: 30, z: 25,
-        tree: {
-          root: {
-            speaker: "Strider",
-            text: "You walk in shadow. The road ahead is long and fraught with peril.",
-            choices: [
-              { text: "I go nonetheless.", next: "go_anyway" },
-              { text: "Who are you?", next: "who" },
-            ],
-          },
-          nodes: {
-            go_anyway: {
-              speaker: "Strider",
-              text: "Then ride fast, and watch the skies for fell creatures.",
-              choices: [],
-            },
-            who: {
-              speaker: "Strider",
-              text: "A friend of the Free Peoples. That is all you need to know.",
-              choices: [],
-            },
-          },
-        },
-      },
-    ];
-
-    for (const def of npcDefs) {
+    for (const def of NPC_DEFS) {
       const y = this.sampleHeightStatic(def.x, def.z);
       const npc = new NPC({ id: def.id, name: def.name, x: def.x, y, z: def.z });
       this.npcs.push(npc);
@@ -328,15 +364,10 @@ export class World {
   }
 
   private spawnEnemies(): void {
-    // Generate ~100 orcs from a seeded RNG so the layout is
-    // deterministic. Mix of solo orcs and packs of 2-6, scattered
-    // across the playable area. Keep a clear radius around spawn
-    // (12u) so the player isn't mobbed on load.
     const rng = makeRng(0xC0FFEE);
     const ARENA = TERRAIN_SIZE * 0.45;
     const SPAWN_KEEPOUT = 14;
 
-    // 18 clusters of 3-6 orcs = ~80 packed orcs.
     for (let c = 0; c < 18; c++) {
       const cx = (rng() - 0.5) * 2 * ARENA;
       const cz = (rng() - 0.5) * 2 * ARENA;
@@ -351,7 +382,6 @@ export class World {
       }
     }
 
-    // 20 solo orcs wandering alone.
     for (let s = 0; s < 20; s++) {
       const x = (rng() - 0.5) * 2 * ARENA;
       const z = (rng() - 0.5) * 2 * ARENA;
@@ -367,8 +397,6 @@ export class World {
   }
 }
 
-// Mulberry32 — small deterministic PRNG so the orc layout is the
-// same on every reload.
 function makeRng(seed: number): () => number {
   let s = seed >>> 0;
   return () => {

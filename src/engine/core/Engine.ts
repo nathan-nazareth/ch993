@@ -43,7 +43,7 @@ export class Engine {
 
   constructor(canvas: HTMLCanvasElement, orcAssets?: OrcAssets) {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x4a5a6a, 80, 280);
+    this.scene.fog = new THREE.Fog(0x4a5a6a, 60, 220);
 
     this.input = new Input(canvas);
     this.audio = new AudioBus();
@@ -55,8 +55,8 @@ export class Engine {
     this.mountSystem = new MountSystem(this.world, this.player, this.input, this.state, this.audio);
     this.cameraSystem = new Camera(this.renderer.camera, this.input, this.player, this.mountSystem);
     this.combat = new Combat(this.world, this.player, this.input, this.audio, this.state);
-    this.dialogue = new Dialogue(this.player, this.world, this.input, this.state);
-    this.movement = new MovementSystem(this.player, this.input, this.mountSystem);
+    this.dialogue = new Dialogue(this.player, this.world, this.input, this.state, this.audio);
+    this.movement = new MovementSystem(this.player, this.input, this.mountSystem, this.state);
 
     this.scene.add(this.player.group);
     this.player.group.position.copy(this.world.horse.group.position);
@@ -106,7 +106,7 @@ export class Engine {
   };
 
   private fixedUpdate(dt: number): void {
-    this.movement.fixedUpdate(dt, this.state);
+    this.movement.fixedUpdate(dt);
     this.player.fixedUpdate(dt);
     this.mountSystem.fixedUpdate(dt);
     this.world.fixedUpdate(dt);

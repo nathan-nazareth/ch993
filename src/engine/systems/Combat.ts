@@ -15,13 +15,14 @@ import { Arrow } from "./Arrow";
 import { Pool } from "../core/Pools";
 
 const SWORD_RANGE = 4.0;
+const SWORD_RANGE_SQ = SWORD_RANGE * SWORD_RANGE;
 const SWORD_ARC_COS = Math.cos(Math.PI / 2);
 const BOW_RANGE = 60;
 const STAMINA_COST_SWORD = 12;
 const STAMINA_COST_BOW = 6;
-const STAMINA_REGEN_PER_S = 18;
 const ARROW_POOL_SIZE = 8;
 const IFRAMES_AFTER_HIT_S = 0.6;
+const CONTACT_RANGE_SQ = 6.76; // 2.6²
 
 export class Combat {
   private cooldown = 0;
@@ -61,7 +62,8 @@ export class Combat {
     }
 
     if (!this.input.isMouseDown(0)) {
-      this.state.setStamina(this.state.stamina + STAMINA_REGEN_PER_S * dt);
+      // Stamina regen is owned by GameState.tickOverlays; nothing to
+      // do here. The HUD is gated on actual value changes.
     }
 
     for (let i = this.activeArrows.length - 1; i >= 0; i--) {
@@ -73,7 +75,7 @@ export class Combat {
       }
     }
 
-    this.checkEnemyContact(dt);
+    this.checkEnemyContact();
   }
 
   private swingSword(): void {
@@ -93,26 +95,28 @@ export class Combat {
     origin.y += 1.0;
 
     // Small forward lunge so the swing actually carries the body.
-    this.player.group.position.x += forward.x * 0.4;
-    this.player.group.position.z += forward.z * 0.4;
-    this.player.group.position.y = this.world.heightSampler(
-      this.player.group.position.x,
-      this.player.group.position.z,
+    const lunge = this.world.clampXZ(
+      this.player.group.position.x + forward.x * 0.4,
+      this.player.group.position.z + forward.z * 0.4,
     );
+    this.player.group.position.x = lunge.x;
+    this.player.group.position.z = lunge.z;
+    this.player.group.position.y = this.world.heightSampler(lunge.x, lunge.z);
 
     let hitSomething = false;
     for (const enemy of this.world.enemies) {
       if (enemy.isDead()) continue;
-      const toEnemy = enemy.group.position.clone().sub(origin);
-      toEnemy.y = 0;
-      const d = toEnemy.length();
-      if (d > SWORD_RANGE) continue;
-      toEnemy.normalize();
-      if (toEnemy.dot(forward) < SWORD_ARC_COS) continue;
+      const dx = enemy.group.position.x - origin.x;
+      const dz = enemy.group.position.z - origin.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > SWORD_RANGE_SQ) continue;
+      const d = Math.sqrt(d2);
+      const nx = dx / d;
+      const nz = dz / d;
+      if (nx * forward.x + nz * forward.z < SWORD_ARC_COS) continue;
       const killed = enemy.damage(this.player.getWeaponDamage());
       hitSomething = true;
       if (killed) {
-        this.audio.hit();
         this.state.addKill();
       }
     }
@@ -147,23 +151,25 @@ export class Combat {
     this.world.group.add(arrow.mesh);
   }
 
-  private checkEnemyContact(_dt: number): void {
+  private checkEnemyContact(): void {
     if (this.iFrames > 0) return;
+    const px = this.player.group.position.x;
+    const pz = this.player.group.position.z;
     for (const enemy of this.world.enemies) {
       if (enemy.isDead()) continue;
       if (!enemy.canDealDamage()) continue;
-      const d = enemy.group.position.distanceTo(this.player.group.position);
-      if (d < 2.6) {
-        this.state.setHealth(this.state.health - enemy.getDamage());
-        enemy.markSwingDelivered();
-        this.iFrames = IFRAMES_AFTER_HIT_S;
-        this.state.flashDamage();
-        this.audio.hit();
-        if (this.state.health <= 0) {
-          this.respawn();
-        }
-        return;
+      const dx = enemy.group.position.x - px;
+      const dz = enemy.group.position.z - pz;
+      if (dx * dx + dz * dz > CONTACT_RANGE_SQ) continue;
+      this.state.setHealth(this.state.health - enemy.getDamage());
+      enemy.markSwingDelivered();
+      this.iFrames = IFRAMES_AFTER_HIT_S;
+      this.state.flashDamage();
+      this.audio.hit();
+      if (this.state.health <= 0) {
+        this.respawn();
       }
+      return;
     }
   }
 

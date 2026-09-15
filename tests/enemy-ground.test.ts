@@ -23,8 +23,8 @@ function findOrcNearSlope(world: World): { orc: Enemy; retreatDir: THREE.Vector3
 
   for (const e of world.enemies) {
     const p = e.group.position;
-    let dx = world.heightSampler(p.x + 1, p.z) - world.heightSampler(p.x - 1, p.z);
-    let dz = world.heightSampler(p.x, p.z + 1) - world.heightSampler(p.x, p.z - 1);
+    const dx = world.heightSampler(p.x + 1, p.z) - world.heightSampler(p.x - 1, p.z);
+    const dz = world.heightSampler(p.x, p.z + 1) - world.heightSampler(p.x, p.z - 1);
     const slope = Math.hypot(dx, dz);
     if (slope > bestSlope) {
       bestSlope = slope;

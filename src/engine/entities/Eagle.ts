@@ -9,7 +9,6 @@ import { Materials } from "../render/Materials";
 
 const PERCH_RADIUS = 2.2;
 const PERCH_PERIOD_S = 12;
-const FLIGHT_HEIGHT_BASE = 4.5;
 
 export class Eagle {
   readonly group: THREE.Group;
@@ -70,7 +69,7 @@ export class Eagle {
     return this.perchCenter;
   }
 
-  fixedUpdate(dt: number, isFlying: boolean, speed: number): void {
+  fixedUpdate(dt: number, isFlying: boolean, _speed: number): void {
     this.isFlying = isFlying;
     if (isFlying) {
       // When mounted, the MountSystem drives position. We just flap.

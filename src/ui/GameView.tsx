@@ -18,15 +18,15 @@ export function GameView({ onExit }: { onExit: () => void }) {
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // The uruk-hai model loads before the engine spins up (it falls
-    // back to plain boxes if unavailable, so the game always starts).
     void (async () => {
       const orcAssets = await loadOrcAssets();
       if (cancelled) return;
       engine = new Engine(canvas, orcAssets);
       setEngine(engine);
       engine.audio.init();
-      engine.audio.startAmbientWind();
+      // The AudioContext is created in an async callback, so it may
+      // start suspended. resume() inside the next user gesture handler
+      // unblocks playback.
       engine.start();
 
       timers.push(setTimeout(() => {
@@ -37,17 +37,20 @@ export function GameView({ onExit }: { onExit: () => void }) {
       }, 6500));
     })();
 
+    const onPointerDown = () => engine?.audio.resume();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !engine?.state.activeDialogue) {
         onExit();
       }
     };
+    window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", onKey);
 
     return () => {
       cancelled = true;
       for (const t of timers) clearTimeout(t);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointerDown);
       engine?.stop();
       setEngine(null);
     };

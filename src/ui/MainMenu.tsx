@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function MainMenu({ onStart, onCredits }: { onStart: () => void; onCredits: () => void }) {
+export function MainMenu({ onStart, onCredits: _onCredits }: { onStart: () => void; onCredits: () => void }) {
   const [showCredits, setShowCredits] = useState(false);
   if (showCredits) {
     return (
