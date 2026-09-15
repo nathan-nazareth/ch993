@@ -139,13 +139,14 @@ export class Enemy {
     if (this.hp <= 0) {
       this.state = "dead";
       this.group.rotation.x = Math.PI / 2;
+      this.body.position.set(0, 0, 0);
+      this.body.rotation.set(0, 0, 0);
       this.group.position.y = this.groundHeight(
         this.group.position.x,
         this.group.position.z,
       ) - 0.2;
       return true;
     }
-    // Brief stagger when hit.
     this.state = "chase";
     this.stateTimer = 0;
     return false;
