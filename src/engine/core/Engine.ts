@@ -76,6 +76,7 @@ export class Engine {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
+    this.audio.shutdown();
     this.input.dispose();
     this.renderer.dispose();
   }

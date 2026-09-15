@@ -89,6 +89,15 @@ export class AudioBus {
     this.ambientNodes = [];
   }
 
+  shutdown(): void {
+    this.stopAmbient();
+    if (this.ctx) {
+      try { void this.ctx.close(); } catch { /* already closed */ }
+      this.ctx = null;
+      this.master = null;
+    }
+  }
+
   private playSwordSwing(): void {
     if (!this.enabled || !this.ctx || !this.master) return;
     const ctx = this.ctx;
