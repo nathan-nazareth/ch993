@@ -1,0 +1,73 @@
+/* ─── Fellowship Scroll Theme ────────────────────────────────────────
+ * A Lord-of-the-Rings design system: parchment, mithril, mallorn.
+ * Inspired by the Star Wars Rebellion Datapad (rebelDatapad.js)
+ * architecture but written from scratch for the Fellowship 3D game.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap");
+
+:root {
+  /* Core LOTR palette */
+  --shire-parchment: #e8e4d8;
+  --shire-parchment-dim: #a8a49c;
+  --rivendell-blue: #7bb7e0;
+  --rivendell-blue-dim: #5a8fb5;
+  --rivendell-blue-glow: rgba(123, 183, 224, 0.35);
+  --dwarven-gold: #d4a547;
+  --dwarven-gold-dim: #a8821f;
+  --dwarven-gold-glow: rgba(212, 165, 71, 0.35);
+  --mithril-grey: #3f3f46;
+  --mithril-grey-light: #52525b;
+  --mithril-grey-dark: #27272a;
+  --mallorn-green: #5a8f5c;
+  --mallorn-green-dim: #3f6f40;
+  --eye-red: #c53030;
+  --eye-red-dim: #9b2424;
+  --witchking-purple: #7a4c8f;
+  --bone: #f4efe1;
+  --void-black: #0b0a0f;
+  --void-black-light: #15131c;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Typography */
+  --font-display: "Cinzel", "Trajan Pro", "Times New Roman", serif;
+  --font-body: "Cormorant Garamond", "Garamond", "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", "Courier New", monospace;
+
+  /* Borders */
+  --border-subtle: rgba(232, 228, 216, 0.08);
+  --border-default: rgba(232, 228, 216, 0.15);
+  --border-strong: rgba(232, 228, 216, 0.25);
+  --border-gold: rgba(212, 165, 71, 0.35);
+  --border-red: rgba(197, 48, 48, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--void-black);
+  color: var(--shire-parchment);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  position: relative;
+}
+
+/* Use Google Fonts */

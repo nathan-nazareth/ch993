@@ -1,0 +1,331 @@
+/* Layout primitives for the 3D game UI overlay */
+
+.game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.game-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-body);
+}
+
+.hud > * {
+  pointer-events: auto;
+}
+
+/* Health/Stamina bars */
+.stat-bar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--space-8);
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-end;
+  flex-direction: column-reverse;
+}
+
+.stat-bar__bar {
+  width: 240px;
+  height: 10px;
+  background: var(--void-black);
+  border: 1px solid var(--border-default);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.stat-bar__fill {
+  height: 100%;
+  transition: width 0.15s ease-out;
+}
+
+.stat-bar__fill--health {
+  background: linear-gradient(
+    90deg,
+    var(--eye-red-dim) 0%,
+    var(--eye-red) 100%
+  );
+}
+
+.stat-bar__fill--stamina {
+  background: linear-gradient(
+    90deg,
+    var(--mallorn-green-dim) 0%,
+    var(--mallorn-green) 100%
+  );
+}
+
+.stat-bar__label {
+  font-size: 0.7rem;
+  color: var(--shire-parchment-dim);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  font-family: var(--font-mono);
+}
+
+/* Crosshair */
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.crosshair__line {
+  position: absolute;
+  background: var(--shire-parchment);
+  opacity: 0.6;
+}
+
+.crosshair__line--h {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.crosshair__line--v {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+/* Weapon indicator */
+.weapon-indicator {
+  position: absolute;
+  bottom: var(--space-8);
+  right: var(--space-8);
+  background: rgba(11, 10, 15, 0.7);
+  border: 1px solid var(--border-default);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-display);
+  letter-spacing: 0.2em;
+  font-size: 0.85rem;
+  color: var(--dwarven-gold);
+  backdrop-filter: blur(4px);
+}
+
+.weapon-indicator__label {
+  font-size: 0.6rem;
+  color: var(--shire-parchment-dim);
+  margin-bottom: 2px;
+  letter-spacing: 0.3em;
+}
+
+/* Mount indicator */
+.mount-indicator {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  background: rgba(11, 10, 15, 0.7);
+  border: 1px solid var(--border-default);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-display);
+  letter-spacing: 0.2em;
+  font-size: 0.85rem;
+  color: var(--rivendell-blue);
+  backdrop-filter: blur(4px);
+}
+
+.mount-indicator__label {
+  font-size: 0.6rem;
+  color: var(--shire-parchment-dim);
+  margin-bottom: 2px;
+  letter-spacing: 0.3em;
+}
+
+/* Dialogue box */
+.dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-8);
+  transform: translateX(-50%);
+  width: min(640px, 90vw);
+  background: rgba(11, 10, 15, 0.92);
+  border: 1px solid var(--border-gold);
+  padding: var(--space-6);
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--shire-parchment);
+  backdrop-filter: blur(6px);
+}
+
+.dialogue__speaker {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--dwarven-gold);
+  letter-spacing: 0.15em;
+  margin-bottom: var(--space-2);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.dialogue__text {
+  font-style: italic;
+}
+
+.dialogue__prompt {
+  margin-top: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--shire-parchment-dim);
+  font-family: var(--font-mono);
+  letter-spacing: 0.15em;
+}
+
+/* Quest log */
+.quest-log {
+  position: absolute;
+  top: var(--space-8);
+  left: var(--space-8);
+  background: rgba(11, 10, 15, 0.85);
+  border: 1px solid var(--border-default);
+  padding: var(--space-4);
+  max-width: 320px;
+  font-family: var(--font-body);
+  backdrop-filter: blur(4px);
+}
+
+.quest-log__title {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.25em;
+  color: var(--dwarven-gold);
+  margin-bottom: var(--space-2);
+  text-transform: uppercase;
+}
+
+.quest-log__entry {
+  margin-bottom: var(--space-2);
+  font-size: 0.9rem;
+}
+
+.quest-log__entry--active {
+  color: var(--shire-parchment);
+}
+
+.quest-log__entry--complete {
+  color: var(--mallorn-green);
+  text-decoration: line-through;
+}
+
+/* Main menu */
+.menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: radial-gradient(ellipse at center, var(--void-black-light) 0%, var(--void-black) 100%);
+  text-align: center;
+}
+
+.menu__title {
+  font-family: var(--font-display);
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--dwarven-gold);
+  letter-spacing: 0.15em;
+  margin-bottom: var(--space-2);
+  text-shadow: 0 0 30px var(--dwarven-gold-glow);
+}
+
+.menu__subtitle {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 1.2rem;
+  color: var(--shire-parchment-dim);
+  margin-bottom: var(--space-8);
+  letter-spacing: 0.1em;
+}
+
+.menu__button {
+  display: block;
+  margin: var(--space-2) auto;
+  padding: var(--space-3) var(--space-8);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--shire-parchment);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.3em;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  min-width: 240px;
+}
+
+.menu__button:hover,
+.menu__button:focus {
+  background: var(--dwarven-gold);
+  color: var(--void-black);
+  border-color: var(--dwarven-gold);
+  outline: none;
+  box-shadow: 0 0 30px var(--dwarven-gold-glow);
+}
+
+/* Loading screen */
+.loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: var(--void-black);
+  color: var(--shire-parchment);
+  font-family: var(--font-display);
+  letter-spacing: 0.2em;
+}
+
+.loading__rune {
+  font-size: 3rem;
+  color: var(--dwarven-gold);
+  margin-bottom: var(--space-4);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Hint tooltip */
+.hint {
+  position: absolute;
+  bottom: 160px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(11, 10, 15, 0.85);
+  border: 1px solid var(--border-gold);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--dwarven-gold);
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+}
